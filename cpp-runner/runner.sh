@@ -16,4 +16,10 @@ fi
 # ./Main is use to run the compiled "Main" file 
 output=$(timeout 5 ./Main < input.txt)
 
-echo "{\"output\":\"$output\"}"
+escaped_output=$(printf "%s" "$output" \
+    | sed 's/\\/\\\\/g' \
+    | sed 's/\"/\\"/g' \
+    | sed ':a;N;$!ba;s/\n/\\n/g'
+)
+
+echo "{\"output\":\"$escaped_output\"}"

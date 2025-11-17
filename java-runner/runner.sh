@@ -1,19 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
-#change directory to the temp 
-cd temp
+cd temp || exit 1
 
-#compile the java file 
-javac Main.java 2> compile_error.txt
+# Compile Java
+javac Main.java 2> compile_error.txt || true
 
 if [ -s compile_error.txt ]; then
-    echo "{\"error\":\"$(cat compile_error.txt | head -n 10 | tr '\n' ' ')\"}"
+    err=$(head -n 10 compile_error.txt | tr '\n' ' ' | sed 's/\\/\\\\/g' | sed 's/\"/\\"/g')
+    echo "{\"error\":\"$err\"}"
     exit 0
-fi 
+fi
 
-# Run the compiled program with input redirection
-output=$(timeout 5 java Main < input.txt)
+output=$(java Main < input.txt 2>&1)
 
-echo "{\"output\":\"$output\"}"
+escaped_output=$(printf "%s" "$output" \
+    | sed 's/\\/\\\\/g' \
+    | sed 's/\"/\\"/g' \
+    | sed ':a;N;$!ba;s/\n/\\n/g')
 
-
+echo "{\"output\":\"$escaped_output\"}"
