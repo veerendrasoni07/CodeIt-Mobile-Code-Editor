@@ -84,21 +84,32 @@ const runJavaCode = async(req,res)=>{
             error += data.toString();
         })
 
-        javaProcess.on("close",()=>{
-            fs.rmSync(folderpath,{recursive:true,force:true});
-            if(error){
-                return res.status(403).json({error:error});
-            }
-            try {
-                const parsed = JSON.parse(output);
-                if(parsed.error){
-                    return res.status(403).json(parsed.error);
-                }
-                return res.status(200).json(parsed.output);
-            } catch (error) {
-                return res.status(500).json({error:"Error Occured During parsing"});
-            }
-        });
+        javaProcess.on("close", () => {
+    fs.rmSync(folderpath, { recursive: true, force: true });
+
+    if (error) {
+        return res.status(403).json({ error });
+    }
+
+    try {
+        const jsonStart = output.indexOf("{");
+        const jsonEnd = output.lastIndexOf("}");
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          const jsonString = output.slice(jsonStart, jsonEnd + 1);
+          const parsed = JSON.parse(jsonString);
+          if (parsed.error) {
+            return res.status(403).json({ error: parsed.error });
+          }
+          return res.status(200).json({ output: parsed.output });
+        } else {
+          throw new Error("No JSON found in output");
+        }
+      } catch (e) {
+        console.log("Parsing error:", e, "Raw output:", output);
+        return res.status(500).json({ error: "Error Occurred During parsing" });
+      }
+});
+
 
 
     } catch (error) {
