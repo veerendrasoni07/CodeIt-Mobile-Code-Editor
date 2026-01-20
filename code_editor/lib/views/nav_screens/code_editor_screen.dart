@@ -11,6 +11,7 @@ import 'package:highlight/languages/python.dart';
 import 'package:highlight/languages/java.dart';
 import 'package:highlight/languages/cpp.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:undo_redo/undo_redo.dart';
 class CodeEditorScreen extends StatefulWidget {
   final String regex;
   final String defaultCode ;
@@ -24,6 +25,9 @@ class CodeEditorScreen extends StatefulWidget {
 
 class _CodeEditorScreenState extends State<CodeEditorScreen> {
 
+
+
+  final UndoRedoManager<String> _undoRedoManager = UndoRedoManager<String>();
   Map<String,dynamic> output = {};
   bool isRunning = false;
   CodeController? codeController;
@@ -38,10 +42,43 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     super.initState();
     codeController = CodeController(
       text:widget.defaultCode ,
+      params: EditorParams(
+        tabSpaces: 2,
+      ),
+      modifiers: const [IndentModifier(handleBrackets: true), CloseBlockModifier(), TabModifier()],
       language: languageSupport[widget.language],
-
     );
+    _undoRedoManager.initialize(widget.defaultCode);
   }
+
+  void changeData(String value) {
+
+      setState(() {
+        _undoRedoManager.captureState(value);
+      });
+
+  }
+
+
+  void undo(){
+    final previous = _undoRedoManager.undo();
+    if(previous!=null){
+      setState(() {
+        codeController!.text = previous;
+      });
+    }
+  }
+  void redo(){
+    final next = _undoRedoManager.redo();
+    if(next!=null){
+      setState(() {
+        codeController!.text = next;
+      });
+    }
+  }
+
+
+
 
   List<String> extractInputFromCode() {
     final code = codeController!.text;
@@ -112,6 +149,7 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
     // TODO: implement dispose
     super.dispose();
     codeController!.dispose();
+    _undoRedoManager.dispose();
   }
 
 
@@ -210,13 +248,16 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
             icon: Icon(Icons.home_outlined,color: Colors.white,size: 30,)
         ),
         actions: [
-          IconButton(
-              onPressed: (){
-                 Navigator.push(context, MaterialPageRoute(builder: (context)=>AiChatScreen()));
-              },
-              icon: Icon(Icons.code,size:30,),
-            color: Colors.white,
-          )
+          // IconButton(
+          //   onPressed: ()=>_undoRedoManager.canRedo() ? undo() : null,
+          //   icon: Icon(Icons.arrow_back_ios_new_rounded,size:30,color: _undoRedoManager.canUndo() ? Colors.white : Colors.grey,),
+          //   color: Colors.white,
+          // ),
+          // IconButton(
+          //     onPressed: ()=> _undoRedoManager.canRedo() ? redo() : null,
+          //     icon: Icon(Icons.arrow_forward_ios_rounded,size:30,color: _undoRedoManager.canRedo() ? Colors.white : Colors.grey,),
+          //   color: Colors.white,
+          // )
         ],
       ),
       body: SingleChildScrollView(
@@ -225,6 +266,9 @@ class _CodeEditorScreenState extends State<CodeEditorScreen> {
             child: SingleChildScrollView(
               child: CodeField(
                   controller: codeController!,
+                onChanged: (value){
+                    changeData(value);
+                },
                 smartQuotesType: SmartQuotesType.enabled,
                 textStyle: GoogleFonts.firaCode(
                   fontWeight: FontWeight.w600,
